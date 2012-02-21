@@ -49,19 +49,23 @@ __contributors__ = ["Jason Diamond <http://injektilo.org/>",
 # HTTP "User-Agent" header to send to servers when downloading feeds.
 # If you are embedding feedparser in a larger application, you should
 # change this to your application name and URL.
-USER_AGENT = "UniversalFeedParser/%s +https://code.google.com/p/feedparser/" % __version__
+USER_AGENT = ("UniversalFeedParser/%s +https://code.google.com/p/feedparser/"
+                % __version__)
 
 # HTTP "Accept" header to send to servers when downloading feeds.  If you don't
 # want to send an Accept header, set this to None.
-ACCEPT_HEADER = "application/atom+xml,application/rdf+xml,application/rss+xml,application/x-netcdf,application/xml;q=0.9,text/xml;q=0.2,*/*;q=0.1"
+ACCEPT_HEADER = ("application/atom+xml,application/rdf+xml,"
+                 "application/rss+xml,application/x-netcdf,"
+                 "application/xml;q=0.9,text/xml;q=0.2,*/*;q=0.1")
 
 # List of preferred XML parsers, by SAX driver name.  These will be tried first,
 # but if they're not installed, Python will keep searching through its own list
 # of pre-installed parsers until it finds one that supports everything we need.
 PREFERRED_XML_PARSERS = ["drv_libxml2"]
 
-# If you want feedparser to automatically run HTML markup through HTML Tidy, set
-# this to 1.  Requires mxTidy <http://www.egenix.com/files/python/mxTidy.html>
+# If you want feedparser to automatically run HTML markup through HTML Tidy,
+# set this to 1.
+# Requires mxTidy <http://www.egenix.com/files/python/mxTidy.html>
 # or utidylib <http://utidylib.berlios.de/>.
 TIDY_MARKUP = 0
 
@@ -1399,6 +1403,8 @@ class _FeedParserMixin:
     _start_dcterms_modified = _start_updated
     _start_dc_date = _start_updated
     _start_lastbuilddate = _start_updated
+    # Custom tags added by newsgrape
+    _start_wp_lastpublished = _start_updated
 
     def _end_updated(self):
         value = self.pop('updated')
@@ -1408,6 +1414,8 @@ class _FeedParserMixin:
     _end_dcterms_modified = _end_updated
     _end_dc_date = _end_updated
     _end_lastbuilddate = _end_updated
+    # Custom tags added by newsgrape
+    _end_wp_lastpublished = _end_updated
 
     def _start_created(self, attrsD):
         self.push('created', 1)
@@ -3460,7 +3468,7 @@ def _parse_date_rfc822(dt):
     # If the year is 2 digits, assume everything in the 90's is the 1990's
     if m['year'] < 100:
         m['year'] += (1900, 2000)[m['year'] < 90]
-    stamp = datetime.datetime(*[m[i] for i in 
+    stamp = datetime.datetime(*[m[i] for i in
                 ('year', 'month', 'day', 'hour', 'minute', 'second')])
 
     # Use the timezone information to calculate the difference between

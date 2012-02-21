@@ -5,6 +5,12 @@ Copyright (c) 2002-2008 Mark Pilgrim
 
 feedparser is open source. See the LICENSE file for more information.
 
+This fork…
+==========
+
+…adds additional ``updated`` tags to feedparser. The goal is to be able to
+extract ALL _updated_ informations from world of feeds, since some do not
+always provide the nice ones like ``<pubDate>``.
 
 Installation
 ============

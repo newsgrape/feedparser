@@ -41,6 +41,7 @@ import threading
 import time
 import unittest
 import urllib
+import warnings
 import zlib
 import BaseHTTPServer
 import SimpleHTTPServer
@@ -72,6 +73,12 @@ class FeedParserTestRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         Header:   X-Foo: bar
         -->
         """
+        # Short-circuit the HTTP status test `test_redirect_to_304()`
+        if self.path == '/-/return-304.xml':
+            self.send_response(304)
+            self.send_header('Content-type', 'text/xml')
+            self.end_headers()
+            return feedparser._StringIO(u''.encode('utf-8'))
         path = self.translate_path(self.path)
         # the compression tests' filenames determine the header sent
         if self.path.startswith('/tests/compression'):
@@ -164,6 +171,56 @@ class BaseTestCase(unittest.TestCase):
 
 class TestCase(BaseTestCase):
     pass
+
+class TestTemporaryFallbackBehavior(unittest.TestCase):
+    "These tests are temporarily here because of issues 310 and 328"
+    def test_issue_328_fallback_behavior(self):
+        warnings.filterwarnings('error')
+
+        d = feedparser.FeedParserDict()
+        d['published'] = u'pub string'
+        d['published_parsed'] = u'pub tuple'
+        d['updated'] = u'upd string'
+        d['updated_parsed'] = u'upd tuple'
+        # Ensure that `updated` doesn't map to `published` when it exists
+        self.assertTrue('published' in d)
+        self.assertTrue('published_parsed' in d)
+        self.assertTrue('updated' in d)
+        self.assertTrue('updated_parsed' in d)
+        self.assertEqual(d['published'], 'pub string')
+        self.assertEqual(d['published_parsed'], 'pub tuple')
+        self.assertEqual(d['updated'], 'upd string')
+        self.assertEqual(d['updated_parsed'], 'upd tuple')
+
+        d = feedparser.FeedParserDict()
+        d['published'] = u'pub string'
+        d['published_parsed'] = u'pub tuple'
+        # Ensure that `updated` doesn't actually exist
+        self.assertTrue('updated' not in d)
+        self.assertTrue('updated_parsed' not in d)
+        # Ensure that accessing `updated` throws a DeprecationWarning
+        try:
+            d['updated']
+        except DeprecationWarning:
+            # Expected behavior
+            pass
+        else:
+            # Wrong behavior
+            self.assertEqual(True, False)
+        try:
+            d['updated_parsed']
+        except DeprecationWarning:
+            # Expected behavior
+            pass
+        else:
+            # Wrong behavior
+            self.assertEqual(True, False)
+        # Ensure that `updated` maps to `published`
+        warnings.filterwarnings('ignore')
+        self.assertEqual(d['updated'], u'pub string')
+        self.assertEqual(d['updated_parsed'], u'pub tuple')
+        warnings.resetwarnings()
+
 
 class TestEverythingIsUnicode(unittest.TestCase):
     "Ensure that `everythingIsUnicode()` is working appropriately"
@@ -425,6 +482,13 @@ class TestHTTPStatus(unittest.TestCase):
     def test_9001(self):
         f = feedparser.parse('http://localhost:8097/tests/http/http_status_9001.xml')
         self.assertEqual(f.bozo, 1)
+    def test_redirect_to_304(self):
+        # ensure that an http redirect to an http 304 doesn't
+        # trigger a bozo_exception
+        u = 'http://localhost:8097/tests/http/http_redirect_to_304.xml'
+        f = feedparser.parse(u)
+        self.assertTrue(f.bozo == 0)
+        self.assertTrue(f.status == 302)
 
 class TestDateParsers(unittest.TestCase):
     "Test the various date parsers; most of the test cases are constructed " \
@@ -438,6 +502,14 @@ class TestDateParsers(unittest.TestCase):
             tup = None
         self.assertEqual(tup, dttuple)
         self.assertEqual(tup, feedparser._parse_date(dtstring))
+    def test_year_10000_date(self):
+        # On some systems this date string will trigger an OverflowError.
+        # On Jython and x64 systems, however, it's interpreted just fine.
+        try:
+            date = feedparser._parse_date_rfc822(u'Sun, 31 Dec 9999 23:59:59 -9999')
+        except OverflowError:
+            date = None
+        self.assertTrue(date in (None, (10000, 1, 5, 4, 38, 59, 2, 5, 0)))
 
 date_tests = {
     feedparser._parse_date_greek: (
@@ -473,11 +545,11 @@ date_tests = {
     ),
     feedparser._parse_date_rfc822: (
         (u'', None), # empty string
-        (u'Sun, 31 Dec 9999 23:59:59 -9999', None), # wildly out-of-range, catch OverflowError
         (u'Thu, 01 Jan 0100 00:00:01 +0100', (99, 12, 31, 23, 0, 1, 3, 365, 0)), # ancient date
         (u'Thu, 01 Jan 04 19:48:21 GMT', (2004, 1, 1, 19, 48, 21, 3, 1, 0)), # 2-digit year
         (u'Thu, 01 Jan 2004 19:48:21 GMT', (2004, 1, 1, 19, 48, 21, 3, 1, 0)), # 4-digit year
         (u'Wed, 19 Aug 2009 18:28:00 Etc/GMT', (2009, 8, 19, 18, 28, 0, 2, 231, 0)), # etc/gmt timezone
+        (u'Wed, 19 Feb 2012 22:40:00 GMT-01:01', (2012, 2, 19, 23, 41, 0, 6, 50, 0)), # gmt+hh:mm timezone
         (u'Mon, 13 Feb, 2012 06:28:00 UTC', (2012, 2, 13, 6, 28, 0, 0, 44, 0)), # extraneous comma
         (u'Thu, 01 Jan 2004 00:00 GMT', (2004, 1, 1, 0, 0, 0, 3, 1, 0)), # no seconds
         (u'Thu, 01 Jan 2004', (2004, 1, 1, 0, 0, 0, 3, 1, 0)), # no time
@@ -646,7 +718,7 @@ def runtests():
     # there are several compression test cases that must be accounted for
     # as well as a number of http status tests that redirect to a target
     # and a few `_open_resource`-related tests
-    httpcount = 5 + 15 + 2
+    httpcount = 5 + 17 + 2
     httpcount += len([f for f in allfiles if 'http' in f])
     httpcount += len([f for f in wellformedfiles if 'http' in f])
     httpcount += len([f for f in illformedfiles if 'http' in f])
@@ -712,6 +784,7 @@ def runtests():
         testsuite.addTest(testloader.loadTestsFromTestCase(TestFeedParserDict))
         testsuite.addTest(testloader.loadTestsFromTestCase(TestMakeSafeAbsoluteURI))
         testsuite.addTest(testloader.loadTestsFromTestCase(TestEverythingIsUnicode))
+        testsuite.addTest(testloader.loadTestsFromTestCase(TestTemporaryFallbackBehavior))
         testresults = unittest.TextTestRunner(verbosity=1).run(testsuite)
 
         # Return 0 if successful, 1 if there was a failure

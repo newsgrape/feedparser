@@ -2,15 +2,21 @@ Changes coming in the next release:
     * Fix mistakes, typos, and bugs in the unit test code
     * Fix crash in Python 2.4 and 2.5 if the feed has a UTF_32 byte order mark
     * Replace the RFC822 date parser for more extensibility
+    * Issue 304 (handle RFC822 dates with timezones like GMT+00:00)
     * Issue 309 (itunes:keywords should be split by commas, not whitespace)
     * Issue 310 (pubDate should map to `published`, not `updated`)
     * Issue 313 (include the compression test files in MANIFEST.in)
+    * Issue 314 (far-flung RFC822 dates don't throw OverflowError on x64)
     * Issue 315 (HTTP server for unit tests runs on 0.0.0.0)
     * Issue 321 (malformed URIs can cause ValueError to be thrown)
+    * Issue 322 (HTTP redirect to HTTP 304 causes SAXParseException)
     * Issue 323 (installing chardet causes 11 unit test failures)
     * Issue 325 (map `description_detail` to `summary_detail`)
     * Issue 326 (Unicode filename causes UnicodeEncodeError if locale is ASCII)
     * Issue 327 (handle RFC822 dates with extraneous commas)
+    * Issue 328 (temporarily map `updated` to `published` due to issue 310)
+    * Issue 329 (escape backslashes in Windows path in docs/introduction.rst)
+    * Issue 331 (don't escape backslashes that are in raw strings in the docs)
 
 5.1 - December 2, 2011
     * Extensive, extensive unit test refactoring

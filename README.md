@@ -9,8 +9,10 @@ This fork…
 ==========
 
 …adds additional ``updated`` tags to feedparser. The goal is to be able to
-extract ALL _updated_ informations from world of feeds, since some do not
-always provide the nice ones like ``<pubDate>``.
+extract ALL _updated_ informations from all feeds in the universe, since some
+do not always provide the nice ones like ``<pubDate>``.
+
+Furthermore it is able to parse RFC822 datetime strings with only 1 day digit.
 
 Installation
 ============
